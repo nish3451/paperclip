@@ -1,6 +1,6 @@
 import type { Request, RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "node:http";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNodeHandler } from "better-auth/node";
 import type { Db } from "@paperclipai/db";
@@ -73,8 +73,7 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins?
   const publicUrl = process.env.PAPERCLIP_PUBLIC_URL ?? baseUrl;
   const isHttpOnly = publicUrl ? publicUrl.startsWith("http://") : false;
 
-  const authConfig = {
-    baseURL: baseUrl,
+  const authConfig: BetterAuthOptions = {
     secret,
     trustedOrigins: effectiveTrustedOrigins,
     database: drizzleAdapter(db, {
@@ -91,11 +90,16 @@ export function createBetterAuthInstance(db: Db, config: Config, trustedOrigins?
       requireEmailVerification: false,
       disableSignUp: config.authDisableSignUp,
     },
-    ...(isHttpOnly ? { advanced: { useSecureCookies: false } } : {}),
   };
 
-  if (!baseUrl) {
-    delete (authConfig as { baseURL?: string }).baseURL;
+  if (baseUrl) {
+    authConfig.baseURL = baseUrl;
+  }
+  if (isHttpOnly) {
+    authConfig.advanced = {
+      ...authConfig.advanced,
+      useSecureCookies: false,
+    };
   }
 
   return betterAuth(authConfig);
